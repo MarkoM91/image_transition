@@ -108902,7 +108902,7 @@ var init = function init() {
     slide2.setImage(img);
   });
   root.scene.add(slide2);
-  var tl = new gsap__WEBPACK_IMPORTED_MODULE_2__["default"]({
+  var tl = new gsap__WEBPACK_IMPORTED_MODULE_2__["TimelineMax"]({
     repeat: -1,
     repeatDelay: 1.0,
     yoyo: true
@@ -109017,6 +109017,220 @@ function Slide(width, height, animationPhase) {
     shaderTransformPosition: [animationPhase === 'in' ? 'transformed *= tProgress;' : 'transformed *= 1.0 - tProgress;', 'transformed += cubicBezier(aStartPosition, aControl0, aControl1, aEndPosition, tProgress);']
   }, {
     map: new three__WEBPACK_IMPORTED_MODULE_0__["Texture"]()
+  });
+  three__WEBPACK_IMPORTED_MODULE_0__["Mesh"].call(this, geometry, material);
+  this.frustumCulled = false;
+}
+
+Slide.prototype = Object.create(three__WEBPACK_IMPORTED_MODULE_0__["Mesh"].prototype);
+Slide.prototype.constructor = Slide;
+Object.defineProperty(Slide.prototype, 'time', {
+  get: function get() {
+    return this.material.uniforms['uTime'].value;
+  },
+  set: function set() {
+    this.material.uniforms['uTime'].value = v;
+  }
+});
+
+Slide.prototype.setImage = function (image) {
+  this.material.uniforms.map.value.image = image;
+  this.material.uniforms.map.value.needsUpdate = true;
+};
+
+Slide.prototype.transition = function () {
+  return gsap__WEBPACK_IMPORTED_MODULE_2__["TweenMax"].fromTo(this, 3.0, {
+    time: 0.0
+  }, {
+    time: this.totalDuration,
+    ease: Power0.easeInOut
+  });
+};
+
+function SlideGeometry(model) {
+  Bas.ModelBufferGeometry.call(this, model);
+}
+
+SlideGeometry.prototype = Object.create(three_bas__WEBPACK_IMPORTED_MODULE_1__["ModelBufferGeometry"].prototype);
+SlideGeometry.prototype.contructor = SlideGeometry;
+
+SlideGeometry.prototype.bufferPositions = function () {
+  var positionBuffer = this.createAttribute('position', 3).array;
+
+  for (var i = 0; i < this.faceCount; i++) {
+    var face = this.modelGeometry.faces[i];
+    var centroid = three_bas__WEBPACK_IMPORTED_MODULE_1__["Utils"].computeCentroid(this.modelGeometry, face);
+    var a = this.modelGeometry.vertices[face.a];
+    var b = this.modelGeometry.vertices[face.b];
+    var c = this.modelGeometry.vertices[face.c];
+    positionBuffer[face.a * 3] = a.x - centroid.x;
+    positionBuffer[face.a * 3 + 1] = a.y - centroid.y;
+    positionBuffer[face.a * 3 + 2] = a.z - centroid.z;
+    positionBuffer[face.b * 3] = b.x - centroid.x;
+    positionBuffer[face.b * 3 + 1] = b.y - centroid.y;
+    positionBuffer[face.b * 3 + 2] = b.z - centroid.z;
+    positionBuffer[face.c * 3] = c.x - centroid.x;
+    positionBuffer[face.c * 3 + 1] = c.y - centroid.y;
+    positionBuffer[face.c * 3 + 2] = c.z - centroid.z;
+  }
+};
+
+function THREERoot(params) {
+  params = utils.extend({
+    fov: 60,
+    zNear: 10,
+    zFar: 100000,
+    createCameraControls: true
+  }, params);
+  this.renderer = new three__WEBPACK_IMPORTED_MODULE_0__["WebGLRenderer"]({
+    antialias: params.antialias,
+    alpha: true
+  });
+  this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  document.getElementById('container').appendChild(this.renderer.domElement);
+  this.camera = new three__WEBPACK_IMPORTED_MODULE_0__["PerspectiveCamera"](params.fov, window.innerWidth / window.innerHeight, params.zNear, params.zFar);
+  this.scene = new three__WEBPACK_IMPORTED_MODULE_0__["Scene"]();
+
+  if (params.createCameraControls) {
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+  }
+
+  this.resize = this.resize.bind(this);
+  this.tick = this.tick.bind(this);
+  this.resize();
+  this.tick();
+  window.addEventListener('resize', this.resize, false);
+}
+
+THREERoot.prototype = {
+  tick: function tick() {
+    this.update();
+    this.render();
+    requestAnimationFrame(this.tick);
+  },
+  update: function update() {
+    this.controls && this.controls.update();
+  },
+  render: function render() {
+    this.renderer.render(this.scene, this.camera);
+  },
+  resize: function resize() {
+    this.camera.aspect = window.innerWidth / window.innerHeight;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+};
+var utils = {
+  extend: function extend(dst, src) {
+    for (var key in src) {
+      dst[key] = src[key];
+    }
+
+    return dst;
+  },
+  randSign: function randSign() {
+    return Math.random() > 0.5 ? 1 : -1;
+  },
+  ease: function ease(_ease, t, b, c, d) {
+    return b + _ease.getRatio(t / d) * c;
+  },
+  fibSpherePoint: function () {
+    var vec = {
+      x: 0,
+      y: 0,
+      z: 0
+    };
+    var G = Math.PI * (3 - Math.sqrt(5));
+    return function (i, n, radius) {
+      var step = 2.0 / n;
+      var r, phi;
+      vec.y = i * step - 1 + step * 0.5;
+      r = Math.sqrt(1 - vec.y * vec.y);
+      phi = i * G;
+      vec.x = Math.cos(phi) * r;
+      vec.z = Math.sin(phi) * r;
+      radius = radius || 1;
+      vec.x *= radius;
+      vec.y *= radius;
+      vec.z *= radius;
+      return vec;
+    };
+  }(),
+  spherePoint: function () {
+    return function (u, v) {
+      u === undefined && (u = Math.random());
+      v === undefined && (v = Math.random());
+      var theta = 2 * Math.PI * u;
+      var phi = Math.acos(2 * v - 1);
+      var vec = {};
+      vec.x = Math.sin(phi) * Math.cos(theta);
+      vec.y = Math.sin(phi) * Math.sin(theta);
+      vec.z = Math.cos(phi);
+      return vec;
+    };
+  }()
+};
+
+function createTweenScrubber(tween, seekSpeed) {
+  seekSpeed = seekSpeed || 0.001;
+
+  function stop() {
+    gsap__WEBPACK_IMPORTED_MODULE_2__["TweenMax"].to(tween, 1, {
+      timeScale: 0
+    });
+  }
+
+  function resume() {
+    gsap__WEBPACK_IMPORTED_MODULE_2__["TweenMax"].to(tween, 1, {
+      timeScale: 1
+    });
+  }
+
+  function seek(dx) {
+    var progress = tween.progress();
+    var p = three__WEBPACK_IMPORTED_MODULE_0__["Math"].clamp(progress + dx * seekSpeed, 0, 1);
+    tween.progress(p);
+  }
+
+  var _cx = 0; // desktop
+
+  var mouseDown = false;
+  document.body.style.cursor = 'pointer';
+  window.addEventListener('mousedown', function (e) {
+    mouseDown = true;
+    document.body.style.cursor = 'ew-resize';
+    _cx = e.clientX;
+    stop();
+  });
+  window.addEventListener('mouseup', function (e) {
+    mouseDown = false;
+    document.body.style.cursor = 'pointer';
+    resume();
+  });
+  window.addEventListener('mousemove', function (e) {
+    if (mouseDown === true) {
+      var cx = e.clientX;
+      var dx = cx - _cx;
+      _cx = cx;
+      seek(dx);
+    }
+  }); // mobile
+
+  window.addEventListener('touchstart', function (e) {
+    _cx = e.touches[0].clientX;
+    stop();
+    e.preventDefault();
+  });
+  window.addEventListener('touchend', function (e) {
+    resume();
+    e.preventDefault();
+  });
+  window.addEventListener('touchmove', function (e) {
+    var cx = e.touches[0].clientX;
+    var dx = cx - _cx;
+    _cx = cx;
+    seek(dx);
+    e.preventDefault();
   });
 }
 

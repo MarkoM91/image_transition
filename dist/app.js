@@ -109234,6 +109234,8 @@ function createTweenScrubber(tween, seekSpeed) {
   });
 }
 
+window.onload = init;
+
 /***/ }),
 
 /***/ "./src/app.scss":

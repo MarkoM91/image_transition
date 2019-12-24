@@ -416,4 +416,7 @@ function createTweenScrubber(tween, seekSpeed) {
 
     seek(dx);
     e.preventDefault();
-  });}
+  });
+}
+
+window.onload = init;
